@@ -34,7 +34,7 @@ do_action() {
         '(( start>0 )) && echo $start || echo 0) -t {1}'
     local preview_cmd=$*
     selected=$(FZF_DEFAULT_COMMAND=$cmd SHELL=$(command -v bash) fzf -m --preview="$preview_cmd" \
-        --preview-window='down:80%' --height=100% --reverse --info=inline --header-lines=1 \
+        --preview-window='down:60%' --height=100% --reverse --info=inline --header-lines=1 \
         --delimiter='\s{2,}' --with-nth=2..-1 --nth=1,2,8,9 --cycle --exact \
         --bind="alt-p:toggle-preview" \
         --bind="alt-n:execute(tmux new-window)+cancel" \
@@ -110,8 +110,8 @@ _print_src_line() {
     local ps_line
     while read -r ps_line; do
         local pane_info=($ps_line)
-        if [[ $tty == ${pane_info[5]} ]]; then
-            local cmd=${pane_info[@]:6}
+        if [[ $tty == ${pane_info[4]} ]]; then
+            local cmd=${pane_info[@]:5}
             local cmd_arr=($cmd)
             # vim path of current buffer if it setted the title
             if [[ $cmd =~ ^n?vim && $title != $(hostname) ]]; then
@@ -123,13 +123,13 @@ _print_src_line() {
             fi
             if [[ -z $first ]]; then
                 first=$(printf "%-6s  %-9s  %5s%s  %8s  %4s  %4s  %5s  %-8s  %-7s  %s\n" \
-                    $pane_id "${session:0:8}%" "${pane:0:-1}" "${pane: -1}" ${pane_info[@]::6} "$cmd")
+                    $pane_id "${session:0:8}%" "${pane:0:-1}" "${pane: -1}" ${pane_info[@]::5} "$cmd")
             else
                 if (( ${#session} > 8 )); then
                     session="${session:0:8}…"
                 fi
                 printf "%-6s  %-9s  %5s%s  %8s  %4s  %4s  %5s  %-8s  %-7s  %s\n" \
-                    $pane_id "$session" "${pane:0:-1}" "${pane: -1}" ${pane_info[@]::6} "$cmd"
+                    $pane_id "$session" "${pane:0:-1}" "${pane: -1}" ${pane_info[@]::5} "$cmd"
             fi
             break
         fi
@@ -138,13 +138,13 @@ _print_src_line() {
 
 panes_src() {
     local cur_id="$1"
-    printf "%-6s  %-9s  %6s  %8s  %4s  %4s  %5s  %-8s  %-7s  %s\n" \
-        'PANEID' 'SESSION' 'PANE' 'PID' '%CPU' '%MEM' 'THCNT' 'TIME' 'TTY' 'CMD'
+    printf "%-6s  %-9s  %6s  %8s  %4s  %4s  %-8s  %-7s  %s\n" \
+        'PANEID' 'SESSION' 'PANE' 'PID' '%CPU' '%MEM' 'TIME' 'TTY' 'CMD'
     panes_info=$(tmux list-panes -aF \
         '#D #{s| |_|:session_name} #I.#P#{?window_zoomed_flag,⬢,❄} #{pane_tty} #{pane_current_path} #T' |
         sed -E "/^$cur_id /d")
-    ttys=$(awk '{printf("%s,", $4)}' <<<$panes_info | sed 's/,$//')
-    ps_info=$(ps -t$ttys -o stat,pid,pcpu,pmem,thcount,time,tname,cmd |
+    ttys=$(awk '{printf("%s,", $4)}' <<<$panes_info | sed 's/,$//' | sed 's/\/dev\///g')
+    ps_info=$(ps -c -t$ttys -o stat,pid,pcpu,pmem,time,tty,command |
         awk '$1~/\+/ {$1="";print $0}')
     ids=()
     hostname=$(hostname)
